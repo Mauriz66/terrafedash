@@ -6,26 +6,40 @@ from datetime import datetime
 import numpy as np
 from utils import load_and_process_data, get_orders_summary, get_ads_summary, filter_dataframe
 import base64
+import calendar
+import locale
+
+# Definir o locale para português brasileiro
+try:
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+except:
+    locale.setlocale(locale.LC_ALL, '')
 
 # Page configuration
 st.set_page_config(
     page_title="Dashboard de Vendas e Marketing - Abril 2025",
     page_icon="☕",
     layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# CSS para estilização da página
+# CSS para estilização da página com responsividade mobile
 def local_css():
     st.markdown("""
     <style>
+    /* Estilos gerais */
     .main {
         padding-top: 1rem;
     }
+    
+    /* Estilo para as abas */
     .stTabs [data-baseweb="tab-list"] {
         gap: 6px;
+        flex-wrap: wrap;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
+        height: auto;
+        min-height: 50px;
         white-space: pre-wrap;
         border-radius: 5px 5px 0px 0px;
         padding: 10px 16px;
@@ -36,17 +50,23 @@ def local_css():
         background-color: #7E57C2 !important;
         color: white !important;
     }
+    
+    /* Estilos de tipografia */
     h1, h2, h3 {
         font-family: 'Sans serif';
         font-weight: 700;
         color: #333;
     }
+    
+    /* Cards e métricas */
     .metric-card {
         background-color: white;
         border-radius: 10px;
         padding: 15px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 15px;
+        overflow: hidden;
+        height: 100%;
     }
     .metric-label {
         font-size: 0.9em;
@@ -58,6 +78,8 @@ def local_css():
         font-weight: 700;
         color: #333;
     }
+    
+    /* Elementos estruturais */
     .divider {
         margin: 20px 0;
         border-bottom: 1px solid #eee;
@@ -69,19 +91,122 @@ def local_css():
         margin-bottom: 20px;
         border-left: 5px solid #7E57C2;
     }
+    
+    /* Gráficos */
     .stPlotlyChart {
         background-color: white;
         border-radius: 10px;
         padding: 15px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     }
+    
+    /* Cards de insights */
+    .insight-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-left: 5px solid #4CAF50;
+    }
+    .insight-card h4 {
+        margin-top: 0;
+        color: #333;
+    }
+    .insight-card p {
+        margin-bottom: 0;
+        color: #555;
+    }
+    
+    /* Tooltips e explicações */
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: help;
+    }
+    .tooltip .tooltip-text {
+        visibility: hidden;
+        width: 200px;
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -100px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+    
+    /* Responsividade para mobile */
+    @media (max-width: 768px) {
+        .row-widget.stButton {
+            width: 100%;
+        }
+        div[data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        .stDataFrame {
+            overflow-x: auto;
+        }
+    }
+    
+    /* Tabelas mais legíveis em dispositivos móveis */
+    .dataframe-container {
+        overflow-x: auto;
+        width: 100%;
+    }
+    
+    /* Ajustes para gráficos em mobile */
+    @media (max-width: 768px) {
+        .stPlotlyChart > div {
+            min-height: 350px !important;
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
 
 local_css()
 
+# Funções de utilidade para análise e insights
+def format_currency(value):
+    """Formata valores monetários em reais"""
+    return f"R$ {value:,.2f}"
+
+def get_percentage_change(current_value, previous_value):
+    """Calcula a variação percentual entre dois valores"""
+    if previous_value == 0:
+        return float('inf')
+    return ((current_value - previous_value) / previous_value) * 100
+
+def get_trend_icon(value):
+    """Retorna ícone de tendência baseado no valor"""
+    if value > 0:
+        return "↗️"
+    elif value < 0:
+        return "↘️"
+    else:
+        return "➡️"
+
+def get_trend_color(value):
+    """Retorna cor de tendência baseado no valor"""
+    if value > 0:
+        return "#4CAF50"  # verde
+    elif value < 0:
+        return "#F44336"  # vermelho
+    else:
+        return "#9E9E9E"  # cinza
+
 # Funções para componentes estilizados
-def metric_card(title, value, delta=None, color="#7E57C2"):
+def metric_card(title, value, delta=None, color="#7E57C2", tooltip=None):
     if delta is not None:
         delta_html = f"""<div style="color: {'#4CAF50' if delta > 0 else '#F44336'}; font-size: 0.8em; margin-top: 5px;">
                         {'↑' if delta > 0 else '↓'} {abs(delta):.2f}%
@@ -89,14 +214,51 @@ def metric_card(title, value, delta=None, color="#7E57C2"):
     else:
         delta_html = ""
     
+    tooltip_html = ""
+    if tooltip:
+        tooltip_html = f"""
+        <div class="tooltip" style="margin-left: 5px;">
+            <span style="font-size: 0.8em; color: #7E57C2;">ℹ️</span>
+            <span class="tooltip-text">{tooltip}</span>
+        </div>
+        """
+    
     html = f"""
     <div style="background-color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 15px; border-left: 5px solid {color};">
-        <div style="font-size: 0.9em; font-weight: 500; color: #555; margin-bottom: 5px;">{title}</div>
+        <div style="font-size: 0.9em; font-weight: 500; color: #555; margin-bottom: 5px; display: flex; align-items: center;">
+            {title} {tooltip_html}
+        </div>
         <div style="font-size: 1.8em; font-weight: 700; color: #333;">{value}</div>
         {delta_html}
     </div>
     """
     return st.markdown(html, unsafe_allow_html=True)
+
+def insight_card(title, description, icon="💡", color="#4CAF50"):
+    html = f"""
+    <div style="background-color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); 
+         margin-bottom: 20px; border-left: 5px solid {color};">
+        <div style="display: flex; align-items: flex-start;">
+            <div style="font-size: 1.5em; margin-right: 10px; color: {color};">{icon}</div>
+            <div>
+                <h4 style="margin-top: 0; margin-bottom: 8px; color: #333;">{title}</h4>
+                <p style="margin: 0; color: #555; line-height: 1.5;">{description}</p>
+            </div>
+        </div>
+    </div>
+    """
+    return st.markdown(html, unsafe_allow_html=True)
+
+def explainer(title, explanation, is_expanded=False):
+    """Componente de explicação expansível"""
+    with st.expander(title, expanded=is_expanded):
+        st.markdown(explanation)
+        
+def chart_with_explanation(fig, title, explanation):
+    """Função para exibir gráfico com explicação"""
+    st.subheader(title)
+    st.markdown(f"<p style='color: #555; margin-bottom: 15px;'>{explanation}</p>", unsafe_allow_html=True)
+    st.plotly_chart(fig, use_container_width=True)
 
 def banner_header():
     st.markdown("""
@@ -132,20 +294,105 @@ with tab1:
     orders_summary = get_orders_summary(df_orders)
     ads_summary = get_ads_summary(df_ads)
     
+    # Calcular métricas importantes
+    roi = ((orders_summary['total_vendas'] - ads_summary['total_gasto']) / ads_summary['total_gasto']) * 100
+    cpa = ads_summary['total_gasto'] / ads_summary['total_conversoes'] if ads_summary['total_conversoes'] > 0 else 0
+    
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        metric_card("Total de Vendas", f"R$ {orders_summary['total_vendas']:,.2f}", color="#4CAF50")
+        metric_card(
+            "Total de Vendas", 
+            f"R$ {orders_summary['total_vendas']:,.2f}", 
+            color="#4CAF50",
+            tooltip="Valor total de todas as vendas realizadas em abril de 2025"
+        )
     
     with col2:
-        metric_card("Total de Pedidos", f"{orders_summary['total_pedidos']:,}", color="#2196F3")
+        metric_card(
+            "Total de Pedidos", 
+            f"{orders_summary['total_pedidos']:,}", 
+            color="#2196F3",
+            tooltip="Número total de pedidos únicos realizados no período"
+        )
     
     with col3:
-        metric_card("Ticket Médio", f"R$ {orders_summary['ticket_medio']:,.2f}", color="#FF9800")
+        metric_card(
+            "Ticket Médio", 
+            f"R$ {orders_summary['ticket_medio']:,.2f}", 
+            color="#FF9800",
+            tooltip="Valor médio gasto por pedido (total de vendas ÷ total de pedidos)"
+        )
     
     with col4:
-        roi = ((orders_summary['total_vendas'] - ads_summary['total_gasto']) / ads_summary['total_gasto']) * 100
-        metric_card("ROI Geral", f"{roi:.2f}%", color="#9C27B0")
+        metric_card(
+            "ROI Geral", 
+            f"{roi:.2f}%", 
+            color="#9C27B0",
+            tooltip="Retorno sobre o investimento em marketing (quanto cada R$ investido retornou em vendas)"
+        )
+    
+    # Principais insights
+    st.markdown("### 📊 Principais Insights")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        instituto_orders = filter_dataframe(df_orders, 'tipo_venda', 'Instituto')
+        ecommerce_orders = filter_dataframe(df_orders, 'tipo_venda', 'Ecommerce')
+        instituto_total = instituto_orders['produto_valor_total'].sum()
+        ecommerce_total = ecommerce_orders['produto_valor_total'].sum()
+        
+        vendas_por_tipo = df_orders.groupby('tipo_venda')['produto_valor_total'].sum().reset_index()
+        vendas_por_tipo.columns = ['Tipo', 'Valor Total']
+        
+        # Tipo que teve maior venda
+        tipo_maior_venda = vendas_por_tipo.iloc[vendas_por_tipo['Valor Total'].argmax()]
+        percentual_maior = (tipo_maior_venda['Valor Total'] / orders_summary['total_vendas']) * 100
+        
+        insight_card(
+            f"Vendas de {tipo_maior_venda['Tipo']} representam {percentual_maior:.1f}% do faturamento",
+            f"A área de {tipo_maior_venda['Tipo']} trouxe {format_currency(tipo_maior_venda['Valor Total'])} em receita, " +
+            f"o que representa {percentual_maior:.1f}% do faturamento total de abril.",
+            icon="💰"
+        )
+    
+    with col2:
+        # CTR e taxa de conversão
+        insight_card(
+            f"Taxa de conversão média: {ads_summary['taxa_conversao']:.2f}%",
+            f"Para cada 100 cliques nos anúncios, {ads_summary['taxa_conversao']:.2f} resultaram em adições ao carrinho. " +
+            f"O custo médio por aquisição (CPA) foi de {format_currency(cpa)}.",
+            icon="🎯",
+            color="#2196F3"
+        )
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Estado com mais vendas
+        estado_mais_vendas = orders_summary['vendas_por_estado'].iloc[0]
+        insight_card(
+            f"{estado_mais_vendas['Estado']} é o estado com maior volume de vendas",
+            f"As vendas em {estado_mais_vendas['Estado']} totalizaram {format_currency(estado_mais_vendas['Valor Total'])}, " +
+            f"representando uma oportunidade importante para expansão regional.",
+            icon="📍",
+            color="#FF9800"
+        )
+    
+    with col2:
+        # Encontrar dia com maior venda
+        vendas_diarias = df_orders.groupby('pedido_data')['produto_valor_total'].sum().reset_index()
+        dia_maior_venda = vendas_diarias.iloc[vendas_diarias['produto_valor_total'].argmax()]
+        dia_formatado = dia_maior_venda['pedido_data'].strftime('%d/%m/%Y')
+        
+        insight_card(
+            f"Maior pico de vendas: {dia_formatado}",
+            f"O dia com maior volume de vendas foi {dia_formatado}, com total de {format_currency(dia_maior_venda['produto_valor_total'])}. " +
+            f"Isso representa {(dia_maior_venda['produto_valor_total']/orders_summary['total_vendas']*100):.1f}% das vendas mensais.",
+            icon="📅",
+            color="#9C27B0"
+        )
     
     st.divider()
     
@@ -153,8 +400,6 @@ with tab1:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Receita vs. Investimento em Marketing")
-        
         # Create a dataframe for the chart
         roi_data = pd.DataFrame({
             'Categoria': ['Receita', 'Investimento em Marketing'],
@@ -175,19 +420,16 @@ with tab1:
             yaxis_title="Valor (R$)",
             yaxis_tickprefix="R$ "
         )
-        st.plotly_chart(fig, use_container_width=True)
         
-        # Calculate and display ROI
-        roi = ((orders_summary['total_vendas'] - ads_summary['total_gasto']) / ads_summary['total_gasto']) * 100
-        st.metric("ROI Geral", f"{roi:.2f}%")
+        chart_with_explanation(
+            fig,
+            "Receita vs. Investimento em Marketing",
+            "Comparativo entre a receita total gerada e o valor investido em campanhas de marketing. " +
+            f"Para cada R$ 1,00 investido em marketing, foram gerados R$ {roi/100+1:.2f} em vendas."
+        )
     
     with col2:
-        st.subheader("Distribuição de Vendas por Tipo")
-        
         # Group by tipo_venda
-        vendas_por_tipo = df_orders.groupby('tipo_venda')['produto_valor_total'].sum().reset_index()
-        vendas_por_tipo.columns = ['Tipo', 'Valor Total']
-        
         fig = px.pie(
             vendas_por_tipo,
             values='Valor Total',
@@ -196,7 +438,13 @@ with tab1:
             color_discrete_sequence=px.colors.qualitative.Plotly
         )
         fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig, use_container_width=True)
+        
+        chart_with_explanation(
+            fig,
+            "Distribuição de Vendas por Tipo",
+            "Proporção de vendas entre os segmentos de Instituto (cursos e workshops) e Ecommerce (cafés e produtos). " +
+            f"O segmento de {tipo_maior_venda['Tipo']} representa a maior parte do faturamento."
+        )
     
     st.divider()
     
@@ -311,6 +559,22 @@ with tab2:
     </div>
     """, unsafe_allow_html=True)
     
+    # Explicação do que é a área Instituto
+    explainer(
+        "O que é a área de Instituto?",
+        """
+        A área de **Instituto** engloba todos os produtos educacionais oferecidos, incluindo:
+        - Cursos presenciais de barista
+        - Workshops de degustação de café
+        - Oficinas sensoriais e cupping
+        - Cursos de métodos filtrados
+        - Aulas e introduções aos cafés especiais
+        
+        Esta área é fundamental para a construção da marca como autoridade no mercado de cafés especiais.
+        """,
+        is_expanded=False
+    )
+    
     # Filter data for Instituto
     instituto_orders = filter_dataframe(df_orders, 'tipo_venda', 'Instituto')
     instituto_ads = filter_dataframe(df_ads, 'tipo_campanha', 'Instituto')
@@ -318,24 +582,97 @@ with tab2:
     instituto_orders_summary = get_orders_summary(instituto_orders)
     instituto_ads_summary = get_ads_summary(instituto_ads)
     
+    # Calcular métricas adicionais
+    if instituto_ads_summary['total_gasto'] > 0:
+        roi_instituto = ((instituto_orders_summary['total_vendas'] - instituto_ads_summary['total_gasto']) / 
+                         instituto_ads_summary['total_gasto']) * 100
+        cpa_instituto = instituto_ads_summary['total_gasto'] / instituto_ads_summary['total_conversoes'] if instituto_ads_summary['total_conversoes'] > 0 else 0
+    else:
+        roi_instituto = 0
+        cpa_instituto = 0
+    
     # Summary metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        metric_card("Total de Vendas", f"R$ {instituto_orders_summary['total_vendas']:,.2f}", color="#4CAF50")
+        metric_card(
+            "Total de Vendas", 
+            f"R$ {instituto_orders_summary['total_vendas']:,.2f}", 
+            color="#4CAF50",
+            tooltip="Valor total de vendas de cursos e workshops em abril"
+        )
     
     with col2:
-        metric_card("Total de Pedidos", f"{instituto_orders_summary['total_pedidos']:,}", color="#2196F3")
+        metric_card(
+            "Total de Pedidos", 
+            f"{instituto_orders_summary['total_pedidos']:,}", 
+            color="#2196F3",
+            tooltip="Número de matrículas e inscrições realizadas"
+        )
     
     with col3:
-        metric_card("Ticket Médio", f"R$ {instituto_orders_summary['ticket_medio']:,.2f}", color="#FF9800")
+        metric_card(
+            "Ticket Médio", 
+            f"R$ {instituto_orders_summary['ticket_medio']:,.2f}", 
+            color="#FF9800",
+            tooltip="Valor médio gasto por inscrição em cursos"
+        )
     
     with col4:
         if instituto_ads_summary['total_gasto'] > 0:
-            roi = ((instituto_orders_summary['total_vendas'] - instituto_ads_summary['total_gasto']) / instituto_ads_summary['total_gasto']) * 100
-            metric_card("ROI Instituto", f"{roi:.2f}%", color="#9C27B0")
+            metric_card(
+                "ROI Instituto", 
+                f"{roi_instituto:.2f}%", 
+                color="#9C27B0",
+                tooltip="Retorno sobre o investimento em marketing para a área educacional"
+            )
         else:
-            metric_card("ROI Instituto", "N/A", color="#9C27B0")
+            metric_card(
+                "ROI Instituto", 
+                "N/A", 
+                color="#9C27B0",
+                tooltip="Não há dados de investimento em marketing para cálculo do ROI"
+            )
+    
+    # Insights específicos do Instituto
+    st.markdown("### 🎓 Insights da Área Educacional")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Encontrar curso mais popular
+        cursos = instituto_orders[instituto_orders['categoria_produto'] == 'Cursos e Workshops']
+        cursos_populares = cursos.groupby('produto_nome').agg({
+            'produto_quantidade': 'sum',
+            'produto_valor_total': 'sum'
+        }).reset_index().sort_values('produto_valor_total', ascending=False)
+        
+        if not cursos_populares.empty:
+            curso_mais_vendido = cursos_populares.iloc[0]
+            insight_card(
+                f"Curso mais popular: {curso_mais_vendido['produto_nome'].split('|')[0].strip()}",
+                f"Este curso gerou {format_currency(curso_mais_vendido['produto_valor_total'])} em receita " +
+                f"com {curso_mais_vendido['produto_quantidade']} inscrições.",
+                icon="🏆"
+            )
+        
+    with col2:
+        # Análise da efetividade das campanhas
+        if instituto_ads_summary['total_gasto'] > 0:
+            insight_card(
+                f"Campanhas de Instituto: {instituto_ads_summary['taxa_conversao']:.2f}% de conversão",
+                f"As campanhas para cursos tiveram um custo médio por aquisição (CPA) de {format_currency(cpa_instituto)}. " +
+                f"Para cada 100 cliques, {instituto_ads_summary['taxa_conversao']:.2f} se converteram em vendas.",
+                icon="📢",
+                color="#2196F3"
+            )
+        else:
+            insight_card(
+                "Sem dados de campanhas para Instituto",
+                "Não há registros de campanhas específicas para a área educacional no período analisado.",
+                icon="ℹ️",
+                color="#9E9E9E"
+            )
     
     st.divider()
     
@@ -448,6 +785,22 @@ with tab3:
     </div>
     """, unsafe_allow_html=True)
     
+    # Explicação do que é a área Ecommerce
+    explainer(
+        "O que é a área de Ecommerce?",
+        """
+        A área de **Ecommerce** abrange todos os produtos físicos à venda, incluindo:
+        - Cafés especiais em diversos formatos (grãos, moído)
+        - Kits e combos de produtos
+        - Acessórios como xícaras e itens para preparo
+        - Produtos comestíveis (doces e outros alimentos)
+        - Itens de arte e decoração relacionados à cultura do café
+        
+        Este segmento é responsável pela maior parte das vendas recorrentes da empresa.
+        """,
+        is_expanded=False
+    )
+    
     # Filter data for Ecommerce
     ecommerce_orders = filter_dataframe(df_orders, 'tipo_venda', 'Ecommerce')
     ecommerce_ads = filter_dataframe(df_ads, 'tipo_campanha', 'Ecommerce')
@@ -455,24 +808,147 @@ with tab3:
     ecommerce_orders_summary = get_orders_summary(ecommerce_orders)
     ecommerce_ads_summary = get_ads_summary(ecommerce_ads)
     
+    # Calcular métricas adicionais
+    if ecommerce_ads_summary['total_gasto'] > 0:
+        roi_ecommerce = ((ecommerce_orders_summary['total_vendas'] - ecommerce_ads_summary['total_gasto']) / 
+                        ecommerce_ads_summary['total_gasto']) * 100
+        cpa_ecommerce = ecommerce_ads_summary['total_gasto'] / ecommerce_ads_summary['total_conversoes'] if ecommerce_ads_summary['total_conversoes'] > 0 else 0
+    else:
+        roi_ecommerce = 0
+        cpa_ecommerce = 0
+    
+    # Calcular produtos vendidos
+    produtos_vendidos = ecommerce_orders['produto_quantidade'].sum()
+    
     # Summary metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        metric_card("Total de Vendas", f"R$ {ecommerce_orders_summary['total_vendas']:,.2f}", color="#4CAF50")
+        metric_card(
+            "Total de Vendas", 
+            f"R$ {ecommerce_orders_summary['total_vendas']:,.2f}", 
+            color="#4CAF50",
+            tooltip="Valor total de vendas de produtos físicos em abril"
+        )
     
     with col2:
-        metric_card("Total de Pedidos", f"{ecommerce_orders_summary['total_pedidos']:,}", color="#2196F3")
+        metric_card(
+            "Total de Pedidos", 
+            f"{ecommerce_orders_summary['total_pedidos']:,}", 
+            color="#2196F3",
+            tooltip="Número de pedidos únicos de produtos físicos"
+        )
     
     with col3:
-        metric_card("Ticket Médio", f"R$ {ecommerce_orders_summary['ticket_medio']:,.2f}", color="#FF9800")
+        metric_card(
+            "Produtos Vendidos", 
+            f"{produtos_vendidos:,}", 
+            color="#FF9800",
+            tooltip="Quantidade total de itens vendidos"
+        )
     
     with col4:
         if ecommerce_ads_summary['total_gasto'] > 0:
-            roi = ((ecommerce_orders_summary['total_vendas'] - ecommerce_ads_summary['total_gasto']) / ecommerce_ads_summary['total_gasto']) * 100
-            metric_card("ROI Ecommerce", f"{roi:.2f}%", color="#9C27B0")
+            metric_card(
+                "ROI Ecommerce", 
+                f"{roi_ecommerce:.2f}%", 
+                color="#9C27B0",
+                tooltip="Retorno sobre o investimento em marketing para produtos físicos"
+            )
         else:
-            metric_card("ROI Ecommerce", "N/A", color="#9C27B0")
+            metric_card(
+                "ROI Ecommerce", 
+                "N/A", 
+                color="#9C27B0",
+                tooltip="Não há dados de investimento em marketing para cálculo do ROI"
+            )
+    
+    # Insights específicos do Ecommerce
+    st.markdown("### 🛒 Insights de Vendas de Produtos")
+    
+    # Agrupar por categorias para análise
+    vendas_por_categoria = ecommerce_orders.groupby('categoria_produto')['produto_valor_total'].sum().reset_index()
+    vendas_por_categoria.columns = ['Categoria', 'Valor Total']
+    vendas_por_categoria = vendas_por_categoria.sort_values('Valor Total', ascending=False)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Categoria mais vendida
+        if not vendas_por_categoria.empty:
+            categoria_mais_vendida = vendas_por_categoria.iloc[0]
+            percentual_categoria = (categoria_mais_vendida['Valor Total'] / ecommerce_orders_summary['total_vendas']) * 100
+            
+            insight_card(
+                f"Categoria mais vendida: {categoria_mais_vendida['Categoria']}",
+                f"Essa categoria representa {percentual_categoria:.1f}% das vendas de Ecommerce, " +
+                f"totalizando {format_currency(categoria_mais_vendida['Valor Total'])}.",
+                icon="🥇"
+            )
+        
+    with col2:
+        # Análise de estados/regiões
+        vendas_por_estado = ecommerce_orders.groupby('envio_estado')['produto_valor_total'].sum().reset_index()
+        vendas_por_estado = vendas_por_estado.sort_values('produto_valor_total', ascending=False)
+        
+        if not vendas_por_estado.empty:
+            estado_mais_vendas = vendas_por_estado.iloc[0]
+            percentual_estado = (estado_mais_vendas['produto_valor_total'] / ecommerce_orders_summary['total_vendas']) * 100
+            
+            insight_card(
+                f"Principal mercado: {estado_mais_vendas['envio_estado']}",
+                f"O estado de {estado_mais_vendas['envio_estado']} representa {percentual_estado:.1f}% das vendas " +
+                f"de produtos físicos, com {format_currency(estado_mais_vendas['produto_valor_total'])}.",
+                icon="📍",
+                color="#2196F3"
+            )
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Produto mais vendido
+        produtos_mais_vendidos = ecommerce_orders.groupby('produto_nome').agg({
+            'produto_quantidade': 'sum',
+            'produto_valor_total': 'sum'
+        }).reset_index().sort_values('produto_valor_total', ascending=False)
+        
+        if not produtos_mais_vendidos.empty:
+            produto_mais_vendido = produtos_mais_vendidos.iloc[0]
+            produto_nome_curto = produto_mais_vendido['produto_nome'].split('-')[0].strip()
+            
+            insight_card(
+                f"Produto mais rentável: {produto_nome_curto}",
+                f"Gerou {format_currency(produto_mais_vendido['produto_valor_total'])} em receita " +
+                f"com {produto_mais_vendido['produto_quantidade']} unidades vendidas.",
+                icon="⭐",
+                color="#FF9800"
+            )
+    
+    with col2:
+        # Campanhas de marketing
+        if ecommerce_ads_summary['total_gasto'] > 0:
+            roi_texto = "positivo" if roi_ecommerce > 0 else "negativo"
+            
+            # Verificar se a chave existe
+            if 'total_conversoes' in ecommerce_ads_summary:
+                conversoes_text = f"{ecommerce_ads_summary['total_conversoes']} conversões"
+            else:
+                conversoes_text = "conversões (dados não disponíveis)"
+            
+            insight_card(
+                f"Campanhas: ROI {roi_texto} de {roi_ecommerce:.1f}%",
+                f"As campanhas para produtos geraram {conversoes_text} " +
+                f"com taxa de {ecommerce_ads_summary['taxa_conversao']:.2f}%. CPA de {format_currency(cpa_ecommerce)}.",
+                icon="📊",
+                color="#9C27B0"
+            )
+        else:
+            insight_card(
+                "Campanhas: dados insuficientes",
+                "Não há informações suficientes sobre as campanhas de marketing para produtos.",
+                icon="ℹ️",
+                color="#9E9E9E"
+            )
     
     st.divider()
     
@@ -601,30 +1077,60 @@ with tab4:
     </div>
     """, unsafe_allow_html=True)
     
+    # Explicação da tabela de pedidos
+    explainer(
+        "Como utilizar esta seção",
+        """
+        Esta seção permite uma análise detalhada dos pedidos realizados em abril de 2025. Você pode:
+        
+        1. **Filtrar os pedidos** usando os controles abaixo para focar em segmentos específicos
+        2. **Visualizar todos os detalhes** de cada pedido na tabela interativa
+        3. **Analisar estatísticas** geradas automaticamente a partir dos filtros aplicados
+        
+        **Dica:** Combine diferentes filtros para análises mais específicas, como "vendas de cafés no estado de SP" ou 
+        "pedidos de cursos com status 'entregue'".
+        """,
+        is_expanded=True
+    )
+    
     # Filters
     st.markdown("""
     <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #7E57C2;">
-        <h3 style="margin-top: 0; font-size: 1.2em;">Filtros</h3>
-        <p style="margin-bottom: 0;">Selecione os critérios para filtrar os pedidos.</p>
+        <h3 style="margin-top: 0; font-size: 1.2em;">Filtros de Pedidos</h3>
+        <p style="margin-bottom: 0;">Selecione os critérios abaixo para filtrar os dados de pedidos.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
+        tipo_options = ['Todos'] + sorted(df_orders['tipo_venda'].unique().tolist())
+        tipo_filter = st.selectbox('Tipo de Negócio', tipo_options, 
+                                  help="Filtre por Instituto (cursos/workshops) ou Ecommerce (produtos)")
+        
         status_options = ['Todos'] + sorted(df_orders['pedido_status'].unique().tolist())
-        status_filter = st.selectbox('Status do Pedido', status_options)
+        status_filter = st.selectbox('Status do Pedido', status_options,
+                                    help="Status atual do pedido (entregue, em separação, etc.)")
     
     with col2:
         state_options = ['Todos'] + sorted(df_orders['envio_estado'].unique().tolist())
-        state_filter = st.selectbox('Estado', state_options)
-    
-    with col3:
+        state_filter = st.selectbox('Estado', state_options,
+                                   help="Estado brasileiro de destino do pedido")
+        
         category_options = ['Todos'] + sorted(df_orders['categoria_produto'].unique().tolist())
-        category_filter = st.selectbox('Categoria do Produto', category_options)
+        category_filter = st.selectbox('Categoria do Produto', category_options,
+                                      help="Categoria do produto vendido")
+    
+    # Pesquisa por palavra-chave
+    keyword_filter = st.text_input('Pesquisar por palavra-chave no nome do produto', 
+                                  placeholder="Ex: Café, Curso, Barista...",
+                                  help="Digite uma palavra para buscar nos nomes dos produtos")
     
     # Apply filters
     filtered_orders = df_orders.copy()
+    
+    if tipo_filter != 'Todos':
+        filtered_orders = filtered_orders[filtered_orders['tipo_venda'] == tipo_filter]
     
     if status_filter != 'Todos':
         filtered_orders = filtered_orders[filtered_orders['pedido_status'] == status_filter]
@@ -635,46 +1141,144 @@ with tab4:
     if category_filter != 'Todos':
         filtered_orders = filtered_orders[filtered_orders['categoria_produto'] == category_filter]
     
+    if keyword_filter:
+        filtered_orders = filtered_orders[filtered_orders['produto_nome'].str.contains(keyword_filter, case=False)]
+    
+    # Calcular número de linhas após filtro
+    num_rows = len(filtered_orders)
+    
     # Display the filtered table
+    st.markdown(f"##### Mostrando {num_rows} resultados:")
+    
+    st.markdown('<div class="dataframe-container">', unsafe_allow_html=True)
     st.dataframe(
         filtered_orders.sort_values('pedido_data', ascending=False),
         use_container_width=True,
         column_config={
-            'pedido_id': 'ID do Pedido',
-            'pedido_data': st.column_config.DateColumn('Data do Pedido'),
+            'pedido_id': st.column_config.NumberColumn('ID do Pedido', format="%d"),
+            'pedido_data': st.column_config.DateColumn('Data do Pedido', format="DD/MM/YYYY"),
             'pedido_hora': 'Hora do Pedido',
-            'pedido_status': 'Status',
-            'envio_estado': 'Estado',
-            'produto_nome': 'Produto',
+            'pedido_status': st.column_config.Column('Status', help="Situação atual do pedido"),
+            'envio_estado': st.column_config.Column('Estado', help="UF de destino"),
+            'produto_nome': st.column_config.Column('Produto', help="Nome do produto ou serviço"),
             'produto_valor_unitario': st.column_config.NumberColumn('Valor Unitário', format="R$ %.2f"),
-            'produto_quantidade': 'Quantidade',
+            'produto_quantidade': st.column_config.NumberColumn('Quantidade', format="%d"),
             'produto_valor_total': st.column_config.NumberColumn('Valor Total', format="R$ %.2f"),
-            'categoria_produto': 'Categoria',
-            'tipo_venda': 'Tipo'
+            'categoria_produto': st.column_config.Column('Categoria', help="Categoria do produto"),
+            'tipo_venda': st.column_config.Column('Tipo', help="Instituto ou Ecommerce")
         },
         hide_index=True
     )
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    if num_rows == 0:
+        st.info("Nenhum pedido encontrado com os filtros selecionados. Tente ajustar os critérios de busca.")
+    
+    st.divider()
     
     # Summary of filtered data
     st.markdown("""
-    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0; border-left: 5px solid #4CAF50;">
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #4CAF50;">
         <h3 style="margin-top: 0; font-size: 1.2em;">Resumo dos Dados Filtrados</h3>
         <p style="margin-bottom: 0;">Estatísticas dos pedidos após aplicação dos filtros selecionados.</p>
     </div>
     """, unsafe_allow_html=True)
     
-    filtered_summary = get_orders_summary(filtered_orders)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        metric_card("Total de Vendas", f"R$ {filtered_summary['total_vendas']:,.2f}", color="#4CAF50")
-    
-    with col2:
-        metric_card("Total de Pedidos", f"{filtered_summary['total_pedidos']:,}", color="#2196F3")
-    
-    with col3:
-        metric_card("Ticket Médio", f"R$ {filtered_summary['ticket_medio']:,.2f}", color="#FF9800")
-    
-    with col4:
-        metric_card("Produtos Vendidos", f"{filtered_summary['produtos_vendidos']:,}", color="#9C27B0")
+    if num_rows > 0:
+        filtered_summary = get_orders_summary(filtered_orders)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            metric_card(
+                "Total de Vendas", 
+                f"R$ {filtered_summary['total_vendas']:,.2f}", 
+                color="#4CAF50",
+                tooltip="Valor total de vendas nos pedidos filtrados"
+            )
+        
+        with col2:
+            metric_card(
+                "Total de Pedidos", 
+                f"{filtered_summary['total_pedidos']:,}", 
+                color="#2196F3",
+                tooltip="Número de pedidos únicos nos resultados filtrados"
+            )
+        
+        with col3:
+            metric_card(
+                "Ticket Médio", 
+                f"R$ {filtered_summary['ticket_medio']:,.2f}", 
+                color="#FF9800",
+                tooltip="Valor médio por pedido nos resultados filtrados"
+            )
+        
+        with col4:
+            metric_card(
+                "Produtos Vendidos", 
+                f"{filtered_summary['produtos_vendidos']:,}", 
+                color="#9C27B0",
+                tooltip="Quantidade total de itens nos pedidos filtrados"
+            )
+        
+        # Mostrar gráfico rápido baseado nos filtros
+        if num_rows >= 5:  # Só mostrar gráfico se houver dados suficientes
+            st.subheader("Visualização Rápida dos Dados Filtrados")
+            
+            visualization_type = st.radio(
+                "Escolha o tipo de visualização:",
+                ["Vendas por Data", "Vendas por Estado", "Vendas por Categoria"],
+                horizontal=True
+            )
+            
+            if visualization_type == "Vendas por Data":
+                vendas_diarias = filtered_orders.groupby('pedido_data')['produto_valor_total'].sum().reset_index()
+                
+                fig = px.line(
+                    vendas_diarias,
+                    x='pedido_data',
+                    y='produto_valor_total',
+                    markers=True,
+                    title="Vendas Diárias - Dados Filtrados",
+                    labels={'pedido_data': 'Data', 'produto_valor_total': 'Valor Total (R$)'}
+                )
+                fig.update_layout(
+                    xaxis_title="Data",
+                    yaxis_title="Valor (R$)",
+                    yaxis_tickprefix="R$ "
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+            elif visualization_type == "Vendas por Estado":
+                vendas_por_estado = filtered_orders.groupby('envio_estado')['produto_valor_total'].sum().reset_index()
+                vendas_por_estado = vendas_por_estado.sort_values('produto_valor_total', ascending=False)
+                
+                fig = px.bar(
+                    vendas_por_estado,
+                    x='envio_estado',
+                    y='produto_valor_total',
+                    text_auto='.2s',
+                    title="Vendas por Estado - Dados Filtrados",
+                    color='envio_estado'
+                )
+                fig.update_layout(
+                    xaxis_title="Estado",
+                    yaxis_title="Valor (R$)",
+                    yaxis_tickprefix="R$ "
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+            else:  # Vendas por Categoria
+                vendas_por_categoria = filtered_orders.groupby('categoria_produto')['produto_valor_total'].sum().reset_index()
+                vendas_por_categoria = vendas_por_categoria.sort_values('produto_valor_total', ascending=False)
+                
+                fig = px.pie(
+                    vendas_por_categoria,
+                    values='produto_valor_total',
+                    names='categoria_produto',
+                    title="Vendas por Categoria - Dados Filtrados"
+                )
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Aplique filtros que retornem dados para visualizar o resumo estatístico.")
