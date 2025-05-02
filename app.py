@@ -389,8 +389,7 @@ with tab1:
         estado_mais_vendas = orders_summary['vendas_por_estado'].iloc[0]
         insight_card(
             f"{estado_mais_vendas['Estado']} é o estado com maior volume de vendas",
-            f"As vendas em {estado_mais_vendas['Estado']} totalizaram {format_currency(estado_mais_vendas['Valor Total'])}, " +
-            f"representando uma oportunidade importante para expansão regional.",
+            f"As vendas neste estado totalizaram {format_currency(estado_mais_vendas['Valor Total'])}",
             icon="📍",
             color="#FF9800"
         )
@@ -403,8 +402,7 @@ with tab1:
         
         insight_card(
             f"Maior pico de vendas: {dia_formatado}",
-            f"O dia com maior volume de vendas foi {dia_formatado}, com total de {format_currency(dia_maior_venda['produto_valor_total'])}. " +
-            f"Isso representa {(dia_maior_venda['produto_valor_total']/orders_summary['total_vendas']*100):.1f}% das vendas mensais.",
+            f"Com um total de {format_currency(dia_maior_venda['produto_valor_total'])}",
             icon="📅",
             color="#9C27B0"
         )
@@ -764,8 +762,6 @@ with tab2:
         - Oficinas sensoriais e cupping
         - Cursos de métodos filtrados
         - Aulas e introduções aos cafés especiais
-        
-        Esta área é fundamental para a construção da marca como autoridade no mercado de cafés especiais.
         """,
         is_expanded=False
     )
@@ -865,7 +861,7 @@ with tab2:
             insight_card(
                 "Sem dados de campanhas para Instituto",
                 "Não há registros de campanhas específicas para a área educacional no período analisado.",
-                icon="ℹ️",
+                icon=" ",
                 color="#9E9E9E"
             )
     
@@ -1141,7 +1137,7 @@ with tab3:
             insight_card(
                 "Campanhas: dados insuficientes",
                 "Não há informações suficientes sobre as campanhas de marketing para produtos.",
-                icon="ℹ️",
+                icon=" ",
                 color="#9E9E9E"
             )
     
