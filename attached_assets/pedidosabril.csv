@@ -1,0 +1,49 @@
+pedido_id;pedido_data;pedido_hora;pedido_status;envio_estado;produto_nome;produto_valor_unitario;produto_quantidade;produto_valor_total
+3491;01/04/2025;09:10;Pedido Entregue;SP;Doce de Jaca Cristalizado Schwambach (200g);16,00;3;48,00
+3492;01/04/2025;12:32;Pedido Entregue;SP;Café Especial - Microlote Afonso Cláudio - Valdir;75,00;1;75,00
+3492;01/04/2025;12:32;Pedido Entregue;SP;Café Especial Terrafé - Chocolate | 250g;59,00;1;59,00
+3492;01/04/2025;12:32;Pedido Entregue;SP;Café Especial Terrafé Espresso Grão 1 kg;180,00;1;180,00
+3493;02/04/2025;10:23;Pedido Entregue;ES;26/04 | Curso Presencial - Introdução aos Cafés Especiais;250,00;1;250,00
+3494;02/04/2025;13:46;Pedido Entregue;SC;Café Especial - Microlote Venda Nova - Fermentado;75,00;1;75,00
+3496;03/04/2025;10:20;Pedido Entregue;ES;10/05 | Curso Presencial - Barista Básico;650,00;1;650,00
+3497;04/04/2025;09:15;Pedido Entregue;ES;Café Especial Terrafé - Caramelo | 250g;59,00;1;59,00
+3498;04/04/2025;09:24;Pedido Entregue;RJ;Café Especial Terrafé - Chocolate | 250g;59,00;3;177,00
+3499;05/04/2025;15:06;Pedido Entregue;ES;12/04 | Oficina Sensorial e Cupping;150,00;1;150,00
+3500;06/04/2025;08:28;Pedido Entregue;DF;Aquarelas do ES - Arte Convento - Café Especial Terrafé;110,00;1;110,00
+3501;06/04/2025;08:58;Pedido Entregue;SP;Café Especial - Microlote Venda Nova - Fermentado;75,00;1;75,00
+3501;06/04/2025;08:58;Pedido Entregue;SP;[NOVO] Café Especial - Microlote Pedra Azul;98,00;1;98,00
+3503;06/04/2025;10:35;Pedido Entregue;ES;Kit 6un - Café Especial Terrafé;300,00;1;300,00
+3508;08/04/2025;11:41;Pedido Pago;ES;24/05 | Curso Presencial - Métodos Filtrados;350,00;1;350,00
+3510;08/04/2025;18:08;Pedido Entregue;RJ;Aquarelas do ES - Arte Pedra Azul - Café Especial Terrafé;110,00;1;110,00
+3510;08/04/2025;18:08;Pedido Entregue;RJ;[NOVO] Café Especial - Microlote Pedra Azul;98,00;1;98,00
+3510;08/04/2025;18:08;Pedido Entregue;RJ;Xícara TERRAFÉ - Preta e Branca;85,00;1;85,00
+3511;08/04/2025;18:15;Pedido Entregue;ES;12/04 | Oficina Sensorial e Cupping;150,00;2;300,00
+3512;09/04/2025;18:58;Pedido Entregue;SP;[NOVO] Café Especial - Microlote Pedra Azul;98,00;1;98,00
+3513;10/04/2025;00:47;Pedido Entregue;ES;12/04 | Oficina Sensorial e Cupping;150,00;1;150,00
+3514;10/04/2025;14:53;Pedido Entregue;SP;Kit 3un - Café Especial Terrafé Espresso Grão 1 kg;513,00;1;513,00
+3515;12/04/2025;10:32;Pedido Enviado;RS;Doce de Jaca Cristalizado Schwambach (200g);16,00;1;16,00
+3516;12/04/2025;12:16;Pedido Pago;GO;12/04 | Oficina Sensorial e Cupping;150,00;1;150,00
+3517;12/04/2025;18:17;Pedido Enviado;SP;Xícara TERRAFÉ - Preta e Branca;85,00;3;255,00
+3520;14/04/2025;11:46;Pedido Pago;ES;10/05 | Curso Presencial - Barista Básico;650,00;2;1300,00
+3521;14/04/2025;16:21;Pedido Pago;ES;24/05 | Curso Presencial - Métodos Filtrados;350,00;1;350,00
+3522;15/04/2025;07:32;Pedido Entregue;ES;Café Especial Terrafé Espresso Grão 1 kg;180,00;1;180,00
+3523;18/04/2025;19:20;Pedido Pago;ES;03/05 | Oficina Sensorial e Cupping;150,00;1;150,00
+3524;18/04/2025;19:20;Pedido Pago;ES;03/05 | Oficina Sensorial e Cupping;150,00;1;150,00
+3525;20/04/2025;08:17;Pedido Enviado;MG;Café Especial Terrafé Espresso Grão - 750g;162,00;3;486,00
+3525;20/04/2025;08:17;Pedido Enviado;MG;Kit 3un - Café Especial Terrafé;159,00;1;159,00
+3526;20/04/2025;17:22;Pedido Enviado;RJ;Aquarelas do ES - Arte Mosteiro - Café Especial Terrafé;110,00;1;110,00
+3526;20/04/2025;17:22;Pedido Enviado;RJ;Café Especial Terrafé - Caramelo | 200g;59,00;1;59,00
+3526;20/04/2025;17:22;Pedido Enviado;RJ;Café Especial Terrafé Espresso Grão - 750g;162,00;1;162,00
+3526;20/04/2025;17:22;Pedido Enviado;RJ;Nova Xícara Terrafé - Preta;85,00;1;85,00
+3527;22/04/2025;13:03;Pedido Entregue;ES;Café Especial Terrafé - Chocolate | 200g;59,00;1;59,00
+3528;23/04/2025;13:52;Pedido Entregue;ES;Kit Aquarelas do ES - Café Especial;297,00;2;592
+3529;26/04/2025;10:49;Pedido Enviado;SP;Kit 2un - Café Especial Terrafé - Caramelo | 200g;106,00;1;106,00
+3529;26/04/2025;10:49;Pedido Enviado;SP;Kit 2un - Café Especial Terrafé - Chocolate | 200g;106,00;2;212,00
+3530;28/04/2025;10:51;Pedido pronto para retirada;ES;Café Especial Terrafé - Caramelo | 200g;59,00;1;59,00
+3530;28/04/2025;10:51;Pedido pronto para retirada;ES;Café Especial Terrafé - Chocolate | 200g;59,00;1;59,00
+3531;28/04/2025;14:34;Pedido Enviado;SP;Café Especial Terrafé - Caramelo | 200g;59,00;1;59,00
+3531;28/04/2025;14:34;Pedido Enviado;SP;Café Especial Terrafé - Chocolate | 200g;59,00;1;59,00
+3531;28/04/2025;14:34;Pedido Enviado;SP;Café Especial Terrafé Espresso Grão - 750g;162,00;1;162,00
+3532;29/04/2025;11:14;Pedido Pago;ES;17/05 | Curso Presencial - Introdução aos Cafés Especiais;250,00;2;500,00
+3533;30/04/2025;09:28;Pedido em separação;RJ;Café Especial - Microlote Caparaó Luan;95,00;1;95,00
+3533;30/04/2025;09:28;Pedido em separação;RJ;Café Especial Terrafé - Caramelo | 200g;59,00;1;59,00
