@@ -215,27 +215,14 @@ def get_trend_color(value):
 
 # Funções para componentes estilizados
 def metric_card(title, value, delta=None, color="#7E57C2", tooltip=None):
-    """Card personalizado para métricas com estilo melhorado"""
-    # Definir cor do delta
-    delta_color = "#4CAF50" if delta and delta > 0 else "#F44336" if delta and delta < 0 else "#9E9E9E"
-    
-    # Definir ícone de delta
-    delta_icon = "↑" if delta and delta > 0 else "↓" if delta and delta < 0 else "→"
-    
-    # Construir o HTML do card
-    html = f"""
-    <div style="background-color: white; border-radius: 10px; padding: 15px; 
-         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 15px; 
-         border-left: 5px solid {color}; height: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <h3 style="margin: 0; font-size: 1.1em; color: #555; font-weight: 600;">{title}</h3>
-            {f'<div title="{tooltip}" style="cursor: help; color: #7E57C2; font-size: 0.9em;">ℹ️</div>' if tooltip else ''}
-        </div>
-        <div style="font-size: 1.8em; font-weight: 700; color: #333; margin: 10px 0 5px 0;">{value}</div>
-        {f'<div style="color: {delta_color}; font-size: 0.9em;">{delta_icon} {abs(delta):.2f}%</div>' if delta is not None else ''}
+    """Cria um card de métrica estilizado"""
+    st.markdown(f"""
+    <div class="metric-card">
+        <div class="metric-label">{title}</div>
+        <div class="metric-value">{value}</div>
+        {f'<div class="metric-delta" style="color: {get_trend_color(delta)};">{delta:+.1f}%</div>' if delta is not None else ''}
     </div>
-    """
-    return st.markdown(html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 def insight_card(title, description, icon="💡", color="#4CAF50"):
     html = f"""
@@ -395,17 +382,25 @@ with tab1:
         )
     
     with col2:
-        # Encontrar dia com maior venda
-        vendas_diarias = df_orders.groupby('pedido_data')['produto_valor_total'].sum().reset_index()
-        dia_maior_venda = vendas_diarias.iloc[vendas_diarias['produto_valor_total'].argmax()]
-        dia_formatado = dia_maior_venda['pedido_data'].strftime('%d/%m/%Y')
+        # Análise por Dia
+        st.subheader("Análise por Dia")
+        dia_mais_vendas = df_orders.groupby('pedido_data')['produto_valor_total'].sum().idxmax()
+        vendas_dia = df_orders.groupby('pedido_data')['produto_valor_total'].sum().max()
+        dia_formatado = dia_mais_vendas.strftime('%d/%m/%Y')
         
-        insight_card(
-            f"Maior pico de vendas: {dia_formatado}",
-            f"Com um total de {format_currency(dia_maior_venda['produto_valor_total'])}",
-            icon="📅",
-            color="#9C27B0"
-        )
+        col1, col2 = st.columns(2)
+        with col1:
+            metric_card(
+                "Dia com Maior Volume",
+                dia_formatado,
+                color="#7E57C2"
+            )
+        with col2:
+            metric_card(
+                "Vendas no Dia",
+                format_currency(vendas_dia),
+                color="#7E57C2"
+            )
     
     st.divider()
     
