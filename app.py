@@ -23,6 +23,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Esconder o menu de configurações
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
 # CSS para estilização da página com responsividade mobile
 def local_css():
     st.markdown("""
@@ -207,16 +215,27 @@ def get_trend_color(value):
 
 # Funções para componentes estilizados
 def metric_card(title, value, delta=None, color="#7E57C2", tooltip=None):
-    # Usar o componente nativo do Streamlit para evitar problemas de renderização
-    if tooltip:
-        with st.container():
-            col1, col2 = st.columns([0.9, 0.1])
-            with col1:
-                st.metric(label=title, value=value, delta=f"{delta:.2f}%" if delta is not None else None)
-            with col2:
-                st.markdown(f"<div style='margin-top: 10px;'><span title='{tooltip}'>ℹ️</span></div>", unsafe_allow_html=True)
-    else:
-        st.metric(label=title, value=value, delta=f"{delta:.2f}%" if delta is not None else None)
+    """Card personalizado para métricas com estilo melhorado"""
+    # Definir cor do delta
+    delta_color = "#4CAF50" if delta and delta > 0 else "#F44336" if delta and delta < 0 else "#9E9E9E"
+    
+    # Definir ícone de delta
+    delta_icon = "↑" if delta and delta > 0 else "↓" if delta and delta < 0 else "→"
+    
+    # Construir o HTML do card
+    html = f"""
+    <div style="background-color: white; border-radius: 10px; padding: 15px; 
+         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 15px; 
+         border-left: 5px solid {color}; height: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <h3 style="margin: 0; font-size: 1.1em; color: #555; font-weight: 600;">{title}</h3>
+            {f'<div title="{tooltip}" style="cursor: help; color: #7E57C2; font-size: 0.9em;">ℹ️</div>' if tooltip else ''}
+        </div>
+        <div style="font-size: 1.8em; font-weight: 700; color: #333; margin: 10px 0 5px 0;">{value}</div>
+        {f'<div style="color: {delta_color}; font-size: 0.9em;">{delta_icon} {abs(delta):.2f}%</div>' if delta is not None else ''}
+    </div>
+    """
+    return st.markdown(html, unsafe_allow_html=True)
 
 def insight_card(title, description, icon="💡", color="#4CAF50"):
     html = f"""
@@ -239,10 +258,22 @@ def explainer(title, explanation, is_expanded=False):
         st.markdown(explanation)
         
 def chart_with_explanation(fig, title, explanation):
-    """Função para exibir gráfico com explicação"""
+    """Função para exibir gráfico com explicação mais destacada"""
     st.subheader(title)
-    st.markdown(f"<p style='color: #555; margin-bottom: 15px;'>{explanation}</p>", unsafe_allow_html=True)
+    
+    # Mostrar o gráfico com largura responsiva
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Adicionar explicação em um card estilizado
+    st.markdown(f"""
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
+         margin: 0 0 30px 0; border-left: 5px solid #7E57C2;">
+        <div style="display: flex; align-items: flex-start;">
+            <div style="font-size: 1.2em; margin-right: 8px; color: #7E57C2;">💡</div>
+            <div style="color: #555; line-height: 1.5;">{explanation}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def banner_header():
     st.markdown("""
@@ -483,6 +514,9 @@ with tab1:
         )
         vendas_por_dia_semana = vendas_por_dia_semana.sort_values('dia_da_semana_pt')
         
+        # Encontrar dia da semana com maior venda
+        dia_maior_vendas = vendas_por_dia_semana.iloc[vendas_por_dia_semana['produto_valor_total'].argmax()]
+        
         fig = px.bar(
             vendas_por_dia_semana,
             x='dia_da_semana_pt',
@@ -497,17 +531,34 @@ with tab1:
             yaxis_title="Valor Total (R$)",
             yaxis_tickprefix="R$ "
         )
+        
+        # Exibir gráfico com explicação
         st.plotly_chart(fig, use_container_width=True)
         
-        # Encontrar dia da semana com maior venda
-        dia_maior_vendas = vendas_por_dia_semana.iloc[vendas_por_dia_semana['produto_valor_total'].argmax()]
-        
-        st.info(f"📊 **{dia_maior_vendas['dia_da_semana_pt']}** é o dia da semana com maior volume de vendas, " +
-                f"totalizando {format_currency(dia_maior_vendas['produto_valor_total'])}.")
+        # Adicionar explicação em um card estilizado
+        st.markdown(f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
+             margin: 0 0 20px 0; border-left: 5px solid #4CAF50;">
+            <div style="display: flex; align-items: flex-start;">
+                <div style="font-size: 1.2em; margin-right: 8px; color: #4CAF50;">📊</div>
+                <div style="color: #555; line-height: 1.5;">
+                    <strong>{dia_maior_vendas['dia_da_semana_pt']}</strong> é o dia da semana com maior volume de vendas, 
+                    totalizando {format_currency(dia_maior_vendas['produto_valor_total'])}. Considere aumentar esforços de marketing 
+                    e preparar estoque para este dia da semana.
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
         # Vendas por hora do dia
         vendas_por_hora = df_orders_temporal.groupby('hora')['produto_valor_total'].sum().reset_index()
+        
+        # Encontrar hora com maior venda
+        hora_maior_vendas = vendas_por_hora.iloc[vendas_por_hora['produto_valor_total'].argmax()]
+        
+        # Formatar para exibir horário comercial
+        vendas_por_hora['hora_formatada'] = vendas_por_hora['hora'].apply(lambda x: f"{x}:00")
         
         fig = px.line(
             vendas_por_hora,
@@ -523,15 +574,29 @@ with tab1:
             yaxis_tickprefix="R$ ",
             xaxis_tickmode='linear',
             xaxis_tick0=0,
-            xaxis_dtick=1
+            xaxis_dtick=2,  # Mais espaçado para melhor visualização mobile
+            height=350  # Altura fixa para melhor aspecto
         )
+        
+        # Exibir gráfico
         st.plotly_chart(fig, use_container_width=True)
         
-        # Encontrar hora com maior venda
-        hora_maior_vendas = vendas_por_hora.iloc[vendas_por_hora['produto_valor_total'].argmax()]
+        # Adicionar explicação em um card estilizado
+        periodo = "manhã" if 6 <= hora_maior_vendas['hora'] <= 12 else "tarde" if 13 <= hora_maior_vendas['hora'] <= 18 else "noite"
         
-        st.info(f"⏰ **{hora_maior_vendas['hora']}h** é a hora do dia com maior volume de vendas, " +
-                f"totalizando {format_currency(hora_maior_vendas['produto_valor_total'])}.")
+        st.markdown(f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
+             margin: 0 0 20px 0; border-left: 5px solid #FF9800;">
+            <div style="display: flex; align-items: flex-start;">
+                <div style="font-size: 1.2em; margin-right: 8px; color: #FF9800;">⏰</div>
+                <div style="color: #555; line-height: 1.5;">
+                    <strong>{hora_maior_vendas['hora']}h</strong> é o horário com maior volume de vendas, 
+                    totalizando {format_currency(hora_maior_vendas['produto_valor_total'])}. Este pico no período da {periodo} 
+                    sugere um padrão de compra que pode ser aproveitado em campanhas específicas.
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Geographic distribution
     st.subheader("Distribuição Geográfica das Vendas")
@@ -540,6 +605,11 @@ with tab1:
     vendas_por_estado = df_orders.groupby('envio_estado')['produto_valor_total'].sum().reset_index()
     vendas_por_estado.columns = ['Estado', 'Valor Total']
     vendas_por_estado = vendas_por_estado.sort_values('Valor Total', ascending=False)
+    
+    # Encontrar os 3 maiores estados
+    top3_estados = vendas_por_estado.head(3)
+    estados_destaque = ", ".join([f"{estado}" for estado in top3_estados['Estado'].values])
+    percentual_top3 = (top3_estados['Valor Total'].sum() / vendas_por_estado['Valor Total'].sum()) * 100
     
     fig = px.bar(
         vendas_por_estado,
@@ -553,9 +623,30 @@ with tab1:
     fig.update_layout(
         xaxis_title="Estado",
         yaxis_title="Valor (R$)",
-        yaxis_tickprefix="R$ "
+        yaxis_tickprefix="R$ ",
+        height=400  # Altura fixa para melhor visualização
     )
+    
+    # Exibir gráfico com explicação 
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Adicionar explicação em um card estilizado
+    estado_maior = vendas_por_estado.iloc[0]
+    
+    st.markdown(f"""
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
+         margin: 0 0 30px 0; border-left: 5px solid #7E57C2;">
+        <div style="display: flex; align-items: flex-start;">
+            <div style="font-size: 1.2em; margin-right: 8px; color: #7E57C2;">📍</div>
+            <div style="color: #555; line-height: 1.5;">
+                <strong>Concentração regional</strong>: Os estados de {estados_destaque} representam {percentual_top3:.1f}% 
+                do total de vendas no período. <strong>{estado_maior['Estado']}</strong> lidera com 
+                {format_currency(estado_maior['Valor Total'])}. Considere estratégias específicas 
+                para fortalecer a presença nos estados de menor performance.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.divider()
     
@@ -577,6 +668,9 @@ with tab1:
         campanhas_por_tipo['ctr'] = (campanhas_por_tipo['cliques'] / campanhas_por_tipo['impressoes']) * 100
         campanhas_por_tipo['taxa_conversao'] = (campanhas_por_tipo['adicoes_carrinho'] / campanhas_por_tipo['cliques']) * 100
         
+        # Encontrar campanha com maior investimento
+        campanha_maior_invest = campanhas_por_tipo.iloc[campanhas_por_tipo['valor_gasto'].argmax()]
+        
         fig = px.bar(
             campanhas_por_tipo,
             x='tipo_campanha',
@@ -590,9 +684,30 @@ with tab1:
             yaxis_title="Valor Gasto (R$)",
             yaxis_tickprefix="R$ "
         )
+        
+        # Exibir gráfico
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Adicionar explicação em um card estilizado
+        st.markdown(f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
+             margin: 0 0 20px 0; border-left: 5px solid #2196F3;">
+            <div style="display: flex; align-items: flex-start;">
+                <div style="font-size: 1.2em; margin-right: 8px; color: #2196F3;">💼</div>
+                <div style="color: #555; line-height: 1.5;">
+                    A campanha de <strong>{campanha_maior_invest['tipo_campanha']}</strong> recebeu o maior investimento, 
+                    totalizando {format_currency(campanha_maior_invest['valor_gasto'])}, o que corresponde a 
+                    {(campanha_maior_invest['valor_gasto']/campanhas_por_tipo['valor_gasto'].sum()*100):.1f}% 
+                    do orçamento total de marketing.
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
+        # Encontrar campanha com maior taxa de conversão
+        campanha_maior_conv = campanhas_por_tipo.iloc[campanhas_por_tipo['taxa_conversao'].argmax()]
+        
         fig = px.bar(
             campanhas_por_tipo,
             x='tipo_campanha',
@@ -610,7 +725,25 @@ with tab1:
             yaxis_title="Percentual (%)",
             yaxis_ticksuffix="%"
         )
+        
+        # Exibir gráfico
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Adicionar explicação em um card estilizado
+        st.markdown(f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; 
+             margin: 0 0 20px 0; border-left: 5px solid #4CAF50;">
+            <div style="display: flex; align-items: flex-start;">
+                <div style="font-size: 1.2em; margin-right: 8px; color: #4CAF50;">📈</div>
+                <div style="color: #555; line-height: 1.5;">
+                    A campanha de <strong>{campanha_maior_conv['tipo_campanha']}</strong> apresentou a maior taxa de conversão: 
+                    {campanha_maior_conv['taxa_conversao']:.2f}%. Isso significa que de cada 100 cliques, 
+                    aproximadamente {campanha_maior_conv['taxa_conversao']:.2f} resultaram em adições ao carrinho, 
+                    demonstrando maior efetividade nesse tipo de campanha.
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ---------- INSTITUTO TAB ----------
 with tab2:
