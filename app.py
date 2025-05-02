@@ -508,7 +508,7 @@ with tab1:
             'valor_gasto': 'sum',
             'cliques': 'sum',
             'impressoes': 'sum',
-            'adicoes_carrinho': 'sum'
+            'adicoes_carrinho': 'sum'  # Mantemos o nome da coluna original do DataFrame
         }).reset_index()
         
         # Calculate CTR and conversion rate
