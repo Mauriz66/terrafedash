@@ -374,14 +374,22 @@ with tab1:
     with col1:
         # Estado com mais vendas
         estado_mais_vendas = orders_summary['vendas_por_estado'].iloc[0]
-        insight_card(
-            f"{estado_mais_vendas['Estado']} é o estado com maior volume de vendas",
-            f"As vendas neste estado totalizaram {format_currency(estado_mais_vendas['Valor Total'])}",
-            icon="📍",
-            color="#FF9800"
+        metric_card(
+            "Estado com Maior Volume",
+            estado_mais_vendas['Estado'],
+            color="#7E57C2"
         )
     
     with col2:
+        metric_card(
+            "Vendas no Estado",
+            format_currency(estado_mais_vendas['Valor Total']),
+            color="#7E57C2"
+        )
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
         # Análise por Dia
         st.subheader("Análise por Dia")
         dia_mais_vendas = df_orders.groupby('pedido_data')['produto_valor_total'].sum().idxmax()
