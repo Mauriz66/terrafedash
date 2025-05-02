@@ -207,32 +207,16 @@ def get_trend_color(value):
 
 # Funções para componentes estilizados
 def metric_card(title, value, delta=None, color="#7E57C2", tooltip=None):
-    if delta is not None:
-        delta_html = f"""<div style="color: {'#4CAF50' if delta > 0 else '#F44336'}; font-size: 0.8em; margin-top: 5px;">
-                        {'↑' if delta > 0 else '↓'} {abs(delta):.2f}%
-                      </div>"""
-    else:
-        delta_html = ""
-    
-    tooltip_html = ""
+    # Usar o componente nativo do Streamlit para evitar problemas de renderização
     if tooltip:
-        tooltip_html = f"""
-        <div class="tooltip" style="margin-left: 5px;">
-            <span style="font-size: 0.8em; color: #7E57C2;">ℹ️</span>
-            <span class="tooltip-text">{tooltip}</span>
-        </div>
-        """
-    
-    html = f"""
-    <div style="background-color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 15px; border-left: 5px solid {color};">
-        <div style="font-size: 0.9em; font-weight: 500; color: #555; margin-bottom: 5px; display: flex; align-items: center;">
-            {title} {tooltip_html}
-        </div>
-        <div style="font-size: 1.8em; font-weight: 700; color: #333;">{value}</div>
-        {delta_html}
-    </div>
-    """
-    return st.markdown(html, unsafe_allow_html=True)
+        with st.container():
+            col1, col2 = st.columns([0.9, 0.1])
+            with col1:
+                st.metric(label=title, value=value, delta=f"{delta:.2f}%" if delta is not None else None)
+            with col2:
+                st.markdown(f"<div style='margin-top: 10px;'><span title='{tooltip}'>ℹ️</span></div>", unsafe_allow_html=True)
+    else:
+        st.metric(label=title, value=value, delta=f"{delta:.2f}%" if delta is not None else None)
 
 def insight_card(title, description, icon="💡", color="#4CAF50"):
     html = f"""
@@ -470,6 +454,84 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True)
     
     st.divider()
+    
+    # Análise de vendas por dia da semana e hora
+    st.subheader("Padrões de Vendas por Dia da Semana e Hora")
+    
+    # Adicionar dias da semana e extrair hora
+    df_orders_temporal = df_orders.copy()
+    df_orders_temporal['dia_da_semana'] = df_orders_temporal['pedido_data'].dt.day_name()
+    df_orders_temporal['hora'] = df_orders_temporal['pedido_hora'].str.split(':').str[0].astype(int)
+    
+    # Definir ordem dos dias da semana
+    dias_semana_ordem = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    dias_semana_pt = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+    mapa_dias = dict(zip(dias_semana_ordem, dias_semana_pt))
+    df_orders_temporal['dia_da_semana_pt'] = df_orders_temporal['dia_da_semana'].map(mapa_dias)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Vendas por dia da semana
+        vendas_por_dia_semana = df_orders_temporal.groupby('dia_da_semana_pt')['produto_valor_total'].sum().reset_index()
+        # Reordenar para ordem dos dias da semana
+        ordem_dias_pt = [mapa_dias[dia] for dia in dias_semana_ordem]
+        vendas_por_dia_semana['dia_da_semana_pt'] = pd.Categorical(
+            vendas_por_dia_semana['dia_da_semana_pt'], 
+            categories=ordem_dias_pt, 
+            ordered=True
+        )
+        vendas_por_dia_semana = vendas_por_dia_semana.sort_values('dia_da_semana_pt')
+        
+        fig = px.bar(
+            vendas_por_dia_semana,
+            x='dia_da_semana_pt',
+            y='produto_valor_total',
+            text_auto='.2s',
+            title="Vendas por Dia da Semana",
+            color='produto_valor_total',
+            color_continuous_scale='Viridis'
+        )
+        fig.update_layout(
+            xaxis_title="Dia da Semana",
+            yaxis_title="Valor Total (R$)",
+            yaxis_tickprefix="R$ "
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Encontrar dia da semana com maior venda
+        dia_maior_vendas = vendas_por_dia_semana.iloc[vendas_por_dia_semana['produto_valor_total'].argmax()]
+        
+        st.info(f"📊 **{dia_maior_vendas['dia_da_semana_pt']}** é o dia da semana com maior volume de vendas, " +
+                f"totalizando {format_currency(dia_maior_vendas['produto_valor_total'])}.")
+    
+    with col2:
+        # Vendas por hora do dia
+        vendas_por_hora = df_orders_temporal.groupby('hora')['produto_valor_total'].sum().reset_index()
+        
+        fig = px.line(
+            vendas_por_hora,
+            x='hora',
+            y='produto_valor_total',
+            markers=True,
+            title="Vendas por Hora do Dia",
+            labels={'hora': 'Hora do dia', 'produto_valor_total': 'Valor Total (R$)'}
+        )
+        fig.update_layout(
+            xaxis_title="Hora do Dia",
+            yaxis_title="Valor (R$)",
+            yaxis_tickprefix="R$ ",
+            xaxis_tickmode='linear',
+            xaxis_tick0=0,
+            xaxis_dtick=1
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Encontrar hora com maior venda
+        hora_maior_vendas = vendas_por_hora.iloc[vendas_por_hora['produto_valor_total'].argmax()]
+        
+        st.info(f"⏰ **{hora_maior_vendas['hora']}h** é a hora do dia com maior volume de vendas, " +
+                f"totalizando {format_currency(hora_maior_vendas['produto_valor_total'])}.")
     
     # Geographic distribution
     st.subheader("Distribuição Geográfica das Vendas")
