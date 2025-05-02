@@ -5,13 +5,106 @@ import plotly.graph_objects as go
 from datetime import datetime
 import numpy as np
 from utils import load_and_process_data, get_orders_summary, get_ads_summary, filter_dataframe
+import base64
 
 # Page configuration
 st.set_page_config(
     page_title="Dashboard de Vendas e Marketing - Abril 2025",
-    page_icon="📊",
+    page_icon="☕",
     layout="wide",
 )
+
+# CSS para estilização da página
+def local_css():
+    st.markdown("""
+    <style>
+    .main {
+        padding-top: 1rem;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        border-radius: 5px 5px 0px 0px;
+        padding: 10px 16px;
+        background-color: #f0f2f6;
+        font-weight: 500;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #7E57C2 !important;
+        color: white !important;
+    }
+    h1, h2, h3 {
+        font-family: 'Sans serif';
+        font-weight: 700;
+        color: #333;
+    }
+    .metric-card {
+        background-color: white;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 15px;
+    }
+    .metric-label {
+        font-size: 0.9em;
+        font-weight: 500;
+        color: #555;
+    }
+    .metric-value {
+        font-size: 1.8em;
+        font-weight: 700;
+        color: #333;
+    }
+    .divider {
+        margin: 20px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .tab-header {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border-left: 5px solid #7E57C2;
+    }
+    .stPlotlyChart {
+        background-color: white;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+local_css()
+
+# Funções para componentes estilizados
+def metric_card(title, value, delta=None, color="#7E57C2"):
+    if delta is not None:
+        delta_html = f"""<div style="color: {'#4CAF50' if delta > 0 else '#F44336'}; font-size: 0.8em; margin-top: 5px;">
+                        {'↑' if delta > 0 else '↓'} {abs(delta):.2f}%
+                      </div>"""
+    else:
+        delta_html = ""
+    
+    html = f"""
+    <div style="background-color: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 15px; border-left: 5px solid {color};">
+        <div style="font-size: 0.9em; font-weight: 500; color: #555; margin-bottom: 5px;">{title}</div>
+        <div style="font-size: 1.8em; font-weight: 700; color: #333;">{value}</div>
+        {delta_html}
+    </div>
+    """
+    return st.markdown(html, unsafe_allow_html=True)
+
+def banner_header():
+    st.markdown("""
+    <div style="background-color: #7E57C2; padding: 20px; border-radius: 10px; margin-bottom: 30px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);">
+        <h1 style="color: white; margin: 0; padding: 0; text-align: center; font-size: 2.2em;">☕ Dashboard de Vendas e Marketing</h1>
+        <p style="color: white; margin: 5px 0 0 0; padding: 0; text-align: center; font-size: 1.2em; opacity: 0.9;">Análise de Desempenho - Abril 2025</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Load and process data
 @st.cache_data
@@ -20,15 +113,20 @@ def get_data():
 
 df_ads, df_orders = get_data()
 
-# Title
-st.title("📊 Dashboard de Vendas e Marketing - Abril 2025")
+# Header with styled banner
+banner_header()
 
 # Create tabs for different sections
 tab1, tab2, tab3, tab4 = st.tabs(["Geral", "Instituto", "Ecommerce", "Tabela de Pedidos"])
 
 # ---------- GENERAL TAB ----------
 with tab1:
-    st.header("Visão Geral")
+    st.markdown("""
+    <div class="tab-header">
+        <h2>Visão Geral</h2>
+        <p>Análise completa de desempenho de vendas e marketing para abril de 2025</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Summary metrics
     orders_summary = get_orders_summary(df_orders)
@@ -37,16 +135,17 @@ with tab1:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total de Vendas", f"R$ {orders_summary['total_vendas']:,.2f}")
+        metric_card("Total de Vendas", f"R$ {orders_summary['total_vendas']:,.2f}", color="#4CAF50")
     
     with col2:
-        st.metric("Total de Pedidos", f"{orders_summary['total_pedidos']}")
+        metric_card("Total de Pedidos", f"{orders_summary['total_pedidos']:,}", color="#2196F3")
     
     with col3:
-        st.metric("Ticket Médio", f"R$ {orders_summary['ticket_medio']:,.2f}")
+        metric_card("Ticket Médio", f"R$ {orders_summary['ticket_medio']:,.2f}", color="#FF9800")
     
     with col4:
-        st.metric("Investimento em Campanhas", f"R$ {ads_summary['total_gasto']:,.2f}")
+        roi = ((orders_summary['total_vendas'] - ads_summary['total_gasto']) / ads_summary['total_gasto']) * 100
+        metric_card("ROI Geral", f"{roi:.2f}%", color="#9C27B0")
     
     st.divider()
     
@@ -205,7 +304,12 @@ with tab1:
 
 # ---------- INSTITUTO TAB ----------
 with tab2:
-    st.header("Instituto - Cursos e Workshops")
+    st.markdown("""
+    <div class="tab-header">
+        <h2>Instituto - Cursos e Workshops</h2>
+        <p>Análise de desempenho da área educacional - cursos, workshops e oficinas</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Filter data for Instituto
     instituto_orders = filter_dataframe(df_orders, 'tipo_venda', 'Instituto')
@@ -218,16 +322,20 @@ with tab2:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total de Vendas", f"R$ {instituto_orders_summary['total_vendas']:,.2f}")
+        metric_card("Total de Vendas", f"R$ {instituto_orders_summary['total_vendas']:,.2f}", color="#4CAF50")
     
     with col2:
-        st.metric("Total de Pedidos", f"{instituto_orders_summary['total_pedidos']}")
+        metric_card("Total de Pedidos", f"{instituto_orders_summary['total_pedidos']:,}", color="#2196F3")
     
     with col3:
-        st.metric("Ticket Médio", f"R$ {instituto_orders_summary['ticket_medio']:,.2f}")
+        metric_card("Ticket Médio", f"R$ {instituto_orders_summary['ticket_medio']:,.2f}", color="#FF9800")
     
     with col4:
-        st.metric("Investimento em Campanhas", f"R$ {instituto_ads_summary['total_gasto']:,.2f}")
+        if instituto_ads_summary['total_gasto'] > 0:
+            roi = ((instituto_orders_summary['total_vendas'] - instituto_ads_summary['total_gasto']) / instituto_ads_summary['total_gasto']) * 100
+            metric_card("ROI Instituto", f"{roi:.2f}%", color="#9C27B0")
+        else:
+            metric_card("ROI Instituto", "N/A", color="#9C27B0")
     
     st.divider()
     
@@ -333,7 +441,12 @@ with tab2:
 
 # ---------- ECOMMERCE TAB ----------
 with tab3:
-    st.header("Ecommerce - Cafés e Produtos")
+    st.markdown("""
+    <div class="tab-header">
+        <h2>Ecommerce - Cafés e Produtos</h2>
+        <p>Análise de desempenho da área de vendas de cafés e produtos físicos</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Filter data for Ecommerce
     ecommerce_orders = filter_dataframe(df_orders, 'tipo_venda', 'Ecommerce')
@@ -346,16 +459,20 @@ with tab3:
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total de Vendas", f"R$ {ecommerce_orders_summary['total_vendas']:,.2f}")
+        metric_card("Total de Vendas", f"R$ {ecommerce_orders_summary['total_vendas']:,.2f}", color="#4CAF50")
     
     with col2:
-        st.metric("Total de Pedidos", f"{ecommerce_orders_summary['total_pedidos']}")
+        metric_card("Total de Pedidos", f"{ecommerce_orders_summary['total_pedidos']:,}", color="#2196F3")
     
     with col3:
-        st.metric("Ticket Médio", f"R$ {ecommerce_orders_summary['ticket_medio']:,.2f}")
+        metric_card("Ticket Médio", f"R$ {ecommerce_orders_summary['ticket_medio']:,.2f}", color="#FF9800")
     
     with col4:
-        st.metric("Investimento em Campanhas", f"R$ {ecommerce_ads_summary['total_gasto']:,.2f}")
+        if ecommerce_ads_summary['total_gasto'] > 0:
+            roi = ((ecommerce_orders_summary['total_vendas'] - ecommerce_ads_summary['total_gasto']) / ecommerce_ads_summary['total_gasto']) * 100
+            metric_card("ROI Ecommerce", f"{roi:.2f}%", color="#9C27B0")
+        else:
+            metric_card("ROI Ecommerce", "N/A", color="#9C27B0")
     
     st.divider()
     
@@ -477,9 +594,21 @@ with tab3:
 
 # ---------- ORDERS TABLE TAB ----------
 with tab4:
-    st.header("Tabela de Pedidos")
+    st.markdown("""
+    <div class="tab-header">
+        <h2>Tabela de Pedidos</h2>
+        <p>Detalhamento completo de todos os pedidos realizados em Abril 2025</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Filters
+    st.markdown("""
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #7E57C2;">
+        <h3 style="margin-top: 0; font-size: 1.2em;">Filtros</h3>
+        <p style="margin-bottom: 0;">Selecione os critérios para filtrar os pedidos.</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -527,20 +656,25 @@ with tab4:
     )
     
     # Summary of filtered data
-    st.subheader("Resumo dos Dados Filtrados")
+    st.markdown("""
+    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin: 20px 0; border-left: 5px solid #4CAF50;">
+        <h3 style="margin-top: 0; font-size: 1.2em;">Resumo dos Dados Filtrados</h3>
+        <p style="margin-bottom: 0;">Estatísticas dos pedidos após aplicação dos filtros selecionados.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     filtered_summary = get_orders_summary(filtered_orders)
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Total de Vendas", f"R$ {filtered_summary['total_vendas']:,.2f}")
+        metric_card("Total de Vendas", f"R$ {filtered_summary['total_vendas']:,.2f}", color="#4CAF50")
     
     with col2:
-        st.metric("Total de Pedidos", f"{filtered_summary['total_pedidos']}")
+        metric_card("Total de Pedidos", f"{filtered_summary['total_pedidos']:,}", color="#2196F3")
     
     with col3:
-        st.metric("Ticket Médio", f"R$ {filtered_summary['ticket_medio']:,.2f}")
+        metric_card("Ticket Médio", f"R$ {filtered_summary['ticket_medio']:,.2f}", color="#FF9800")
     
     with col4:
-        st.metric("Produtos Vendidos", f"{filtered_summary['produtos_vendidos']}")
+        metric_card("Produtos Vendidos", f"{filtered_summary['produtos_vendidos']:,}", color="#9C27B0")
