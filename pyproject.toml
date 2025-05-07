@@ -17,3 +17,7 @@ dependencies = [
     "tornado==6.3.3",
     "watchdog==3.0.0"
 ]
+
+[build-system]
+requires = ["pip>=21.0"]
+build-backend = "pip.build_api"

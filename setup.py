@@ -1,0 +1,22 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="app",
+    version="0.1.0",
+    packages=find_packages(),
+    install_requires=[
+        "numpy==1.24.3",
+        "pandas==2.0.3",
+        "plotly==5.16.1",
+        "streamlit==1.28.1",
+        "altair==5.1.2",
+        "pydeck==0.8.0",
+        "protobuf==4.24.4",
+        "python-dateutil==2.8.2",
+        "pytz==2023.3",
+        "requests==2.31.0",
+        "tornado==6.3.3",
+        "watchdog==3.0.0",
+    ],
+    python_requires=">=3.9",
+) 
