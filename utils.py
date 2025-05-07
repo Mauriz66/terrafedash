@@ -2,30 +2,17 @@ import pandas as pd
 import numpy as np
 import re
 from datetime import datetime
-import os
 
 def load_and_process_data():
     """
     Load and process both CSV files
     Returns processed dataframes for ads and orders
     """
-    # Determinar o caminho dos arquivos
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    ads_path = os.path.join(base_dir, 'attached_assets', 'adsabril.csv')
-    orders_path = os.path.join(base_dir, 'attached_assets', 'pedidosabril.csv')
-    
-    # Verificar existência dos arquivos e usar caminhos alternativos se necessário
-    if not os.path.exists(ads_path):
-        ads_path = 'attached_assets/adsabril.csv'
-    
-    if not os.path.exists(orders_path):
-        orders_path = 'attached_assets/pedidosabril.csv'
-    
     # Load ad campaign data
-    df_ads = pd.read_csv(ads_path, sep=';')
+    df_ads = pd.read_csv('attached_assets/adsabril.csv', sep=';')
     
     # Load order data
-    df_orders = pd.read_csv(orders_path, sep=';')
+    df_orders = pd.read_csv('attached_assets/pedidosabril.csv', sep=';')
     
     # Process ad campaign data
     df_ads = process_ad_data(df_ads)
