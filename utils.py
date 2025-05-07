@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import re
+import os
 from datetime import datetime
 
 def load_and_process_data():
@@ -8,11 +9,16 @@ def load_and_process_data():
     Load and process both CSV files
     Returns processed dataframes for ads and orders
     """
+    # Determine path
+    path = os.path.join(os.path.dirname(__file__), 'attached_assets')
+    
     # Load ad campaign data
-    df_ads = pd.read_csv('attached_assets/adsabril.csv', sep=';')
+    ads_path = os.path.join(path, 'adsabril.csv')
+    df_ads = pd.read_csv(ads_path, sep=';')
     
     # Load order data
-    df_orders = pd.read_csv('attached_assets/pedidosabril.csv', sep=';')
+    orders_path = os.path.join(path, 'pedidosabril.csv')
+    df_orders = pd.read_csv(orders_path, sep=';')
     
     # Process ad campaign data
     df_ads = process_ad_data(df_ads)
