@@ -1,9 +1,8 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
-    name="app",
+    name="streamlit_app",
     version="0.1.0",
-    packages=find_packages(),
     install_requires=[
         "numpy==1.24.3",
         "pandas==2.0.3",
