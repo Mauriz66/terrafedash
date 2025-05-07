@@ -19,4 +19,9 @@ setup(
         "watchdog>=6.0.0"
     ],
     python_requires=">=3.11",
+    entry_points={
+        'console_scripts': [
+            'terrafedash=terrafedash.app:main',
+        ],
+    },
 ) 
