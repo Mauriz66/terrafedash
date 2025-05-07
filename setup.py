@@ -18,10 +18,5 @@ setup(
         "tornado>=6.4.2",
         "watchdog>=6.0.0"
     ],
-    python_requires=">=3.11",
-    entry_points={
-        'console_scripts': [
-            'terrafedash=terrafedash.app:main',
-        ],
-    },
+    python_requires=">=3.11"
 ) 
